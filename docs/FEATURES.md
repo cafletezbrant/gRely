@@ -21,7 +21,7 @@ the code in `scripts/04_featurization/compile_final_feature_set.py`.
 
 ## 2. Gene-level
 - **Sequence–chromatin** (gene body): GC + the same EpiMap track summaries over
-  the gene span. *(Producer script not in the supplied set — see MIGRATION.md.)*
+  the gene span (`scripts/04_featurization/gene_sequence_features.py`).
 - **Observed expression** (`gene_data_features.py`): distributional stats of the
   observed TFRecord targets globally and over exon bins; across-cell/across-bin
   variability; Shannon entropy; sparsity/peakiness; per-GTEx-track means, sums,
@@ -55,5 +55,4 @@ gRely uses signals that magnitude alone does not carry: correct low-magnitude
 calls tend to be supported by open chromatin (ATAC/POLR2A) at the variant, while
 incorrect high-magnitude calls tend to have high replicate dispersion and large
 distance to training regions. This is why gRely stays discriminative in the
-low-|VEP| regime that effect-size filtering discards. (Feature-attribution
-figures that quantify this are out of scope for this tool repo.)
+low-|VEP| regime that effect-size filtering discards.

@@ -8,6 +8,11 @@ import pickle
 import pandas as pd
 import sys
 import os
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from grely.paths import load_paths
+P = load_paths()
 
 def get_centered_sequence(fasta, chrom, pos, window_size):
     half = window_size // 2
@@ -77,13 +82,13 @@ def extract_bigwig_features(bw_path, chrom, pos, window=500):
         'sum': float(np.sum(values))
     }
 
-fasta = pyfaidx.Fasta("../data/hg38.fa")
+fasta = pyfaidx.Fasta(P['reference']['fasta'])
 
-seqs=pd.read_csv('../data/all_sequences.csv', sep='\t')
+seqs=pd.read_csv(P['tables']['all_sequences'], sep='\t')
 job_id=int(sys.argv[1])
 seqs=seqs.iloc[job_id*100:job_id*100+100].reset_index(drop=True)
 
-df = pd.read_csv('../data/sequences_human.bed.gz', sep='\t', header=None)
+df = pd.read_csv(P['reference']['sequences_bed_gz'], sep='\t', header=None)
 df.columns=['chrom','start','end','fold']
 df['split'] = df['fold'].map({
     'fold3': 'test',
@@ -94,19 +99,23 @@ df = df[df['split']=='train']
 
 mer_sizes = [11,21,41]
 window_sizes = [11, 21, 41, 101, 1001]
+bigwig_dir = P['bigwig_dir']
 bigwig_paths = {
-    'ATAC': '../data/bigwig_tracks/average_ATAC-seq_observed_Other.bigWig',
-    'H3K27ac': '../data/bigwig_tracks/average_H3K27ac_observed_Other.bigWig',
-    'H3K4me1': '../data/bigwig_tracks/average_H3K4me1_observed_Other.bigWig',
-    'H3K9me3': '../data/bigwig_tracks/average_H3K9me3_observed_Other.bigWig',
-    'CTCF': '../data/bigwig_tracks/average_CTCF_observed_Other.bigWig',
-    'H3K27me3': '../data/bigwig_tracks/average_H3K27me3_observed_Other.bigWig',
-    'H3K4me3': '../data/bigwig_tracks/average_H3K4me3_observed_Other.bigWig',
-    'POLR2A': '../data/bigwig_tracks/average_POLR2A_observed_Other.bigWig',
-    'DNase': '../data/bigwig_tracks/average_DNase-seq_observed_Other.bigWig',
-    'H3K36me3': '../data/bigwig_tracks/average_H3K36me3_observed_Other.bigWig',
-    'H3K9ac': '../data/bigwig_tracks/average_H3K9ac_observed_Other.bigWig',
+    'ATAC': os.path.join(bigwig_dir, 'average_ATAC-seq_observed_Other.bigWig'),
+    'H3K27ac': os.path.join(bigwig_dir, 'average_H3K27ac_observed_Other.bigWig'),
+    'H3K4me1': os.path.join(bigwig_dir, 'average_H3K4me1_observed_Other.bigWig'),
+    'H3K9me3': os.path.join(bigwig_dir, 'average_H3K9me3_observed_Other.bigWig'),
+    'CTCF': os.path.join(bigwig_dir, 'average_CTCF_observed_Other.bigWig'),
+    'H3K27me3': os.path.join(bigwig_dir, 'average_H3K27me3_observed_Other.bigWig'),
+    'H3K4me3': os.path.join(bigwig_dir, 'average_H3K4me3_observed_Other.bigWig'),
+    'POLR2A': os.path.join(bigwig_dir, 'average_POLR2A_observed_Other.bigWig'),
+    'DNase': os.path.join(bigwig_dir, 'average_DNase-seq_observed_Other.bigWig'),
+    'H3K36me3': os.path.join(bigwig_dir, 'average_H3K36me3_observed_Other.bigWig'),
+    'H3K9ac': os.path.join(bigwig_dir, 'average_H3K9ac_observed_Other.bigWig'),
 }
+
+out_dir = P['outputs']['sequence_features_new']
+os.makedirs(out_dir, exist_ok=True)
 
 for i, row in seqs.iterrows():
 
@@ -125,14 +134,13 @@ for i, row in seqs.iterrows():
 
     whole_ref_seq = get_centered_sequence(fasta, chrom, pos, window_size=196609)
 
-    path = f'../data/sequence_features/{variant}.pkl'
-    if os.path.exists(path):
+    out_path = os.path.join(out_dir, f'{variant}.parquet')
+    if os.path.exists(out_path):
         try:
-            with open(path, "rb") as f:
-                features = pickle.load(f)
-                continue
+            pd.read_parquet(out_path)
+            continue
         except Exception as e:
-            print(f"Skipping: One of the files is corrupted.\n - {path}\nError: {e}")
+            print(f"Skipping: One of the files is corrupted.\n - {out_path}\nError: {e}")
             pass
 
 
@@ -166,4 +174,4 @@ for i, row in seqs.iterrows():
                 features[f"{track}_{stat_name}_{w}bp"] = value
 
     features_df = pd.DataFrame([features])
-    features_df.to_pickle(f"../data/sequence_features/{variant}.pkl")
+    features_df.to_parquet(os.path.join(out_dir, f"{variant}.parquet"), index=False)

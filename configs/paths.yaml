@@ -1,40 +1,29 @@
 # ---------------------------------------------------------------------------
 # gRely path configuration
 #
-# Every value below is copied VERBATIM from the original pipeline scripts, so
-# the defaults reproduce the exact behavior of the code as it was run for the
-# paper. Edit the `roots` block to point at your own machine; the per-file
-# entries are expressed relative to those roots.
+# All data, reference, and output locations used by the pipeline. Every root
+# below defaults to a folder inside this repository's `data/` directory, so the
+# scripts run out of the box once you populate `data/` (see data/README.md).
 #
-# In the original runs the scripts were launched (via SLURM) from
-# `$SCRATCH/codes`, which made the relative path `../data` resolve to
-# `$SCRATCH/data`. So `../data/<x>` and `/home/rafia1/scratch/data/<x>` refer
-# to the SAME location. Both are represented here under `roots.data`.
+# Roots are resolved relative to the repository root, so scripts work from any
+# working directory. Point a root at an absolute path to use data stored
+# elsewhere, or set the GRELY_DATA environment variable to relocate `data`.
 #
-# This file is consumed by `grely.paths.load_paths()` (additive helper). The
-# stage scripts themselves have been left byte-identical to the originals and
-# do NOT yet read this file — see MIGRATION.md.
+# Consumed by `grely.paths.load_paths()`.
 # ---------------------------------------------------------------------------
 
 roots:
-  # Primary working data directory. Original: /home/rafia1/scratch/data
-  # (equivalently ../data when a script is run from $SCRATCH/codes).
-  data: /home/rafia1/scratch/data
+  # Primary data directory (reference genome, tracks, tables, intermediates).
+  data: data
 
-  # Compute-cluster scratch root. Original: /home/rafia1/scratch
-  scratch: /home/rafia1/scratch
+  # Borzoi checkout that ships borzoi_helpers / params_pred.json / targets.
+  borzoi_examples: data/borzoi/examples
 
-  # Borzoi repo checkout that ships borzoi_helpers / params_pred.json / targets.
-  # Original: /home/rafia1/scratch/borzoi/examples
-  borzoi_examples: /home/rafia1/scratch/borzoi/examples
+  # eQTL Catalogue SuSiE credible sets + summary statistics.
+  eqtl_catalogue: data/eqtl_catalogue
 
-  # READ-ONLY reference store: eQTL Catalogue SuSiE credible sets + sumstats.
-  # Original: /gstore/data/humgenet/ref/eqtl_catalogue
-  eqtl_catalogue: /gstore/data/humgenet/ref/eqtl_catalogue
-
-  # READ-ONLY reference store: Borzoi training data (sequences.bed + TFRecords).
-  # Original: /gstore/data/resbioai/grelu/borzoi-data/hg38
-  borzoi_data: /gstore/data/resbioai/grelu/borzoi-data/hg38
+  # Borzoi training data (sequences.bed + TFRecords).
+  borzoi_data: data/borzoi_data
 
 # --- Reference genome / annotations -----------------------------------------
 reference:
@@ -54,10 +43,10 @@ borzoi:
   targets_human:    "{borzoi_examples}/targets_human.txt"        # 7611 tracks
   targets_human_gz: "{data}/targets_human.txt.gz"
 
-# --- eQTL Catalogue (read-only reference store) ------------------------------
+# --- eQTL Catalogue -----------------------------------------------------------
 eqtl:
-  susie_dir:    "{eqtl_catalogue}/susie"                                            # {study_id}/{dataset_id}/{dataset_id}.credible_sets.tsv.gz
-  sumstats_tpl: "{eqtl_catalogue}/sumstats/{study_id}/{dataset_id}/{dataset_id}.all.tsv.gz"
+  susie_dir:    "{eqtl_catalogue}/susie"        # {study_id}/{dataset_id}/{dataset_id}.credible_sets.tsv.gz
+  sumstats_dir: "{eqtl_catalogue}/sumstats"     # {study_id}/{dataset_id}/{dataset_id}.all.tsv.gz
 
 # --- Curated label / index tables (produced by upstream curation) -----------
 tables:
@@ -73,7 +62,7 @@ tables:
 
 # --- EpiMap "Other" average chromatin tracks (variant/gene sequence feats) ---
 # NB: variant_features.py reads the *observed* tracks; download_files.sh fetches
-# the *imputed* tracks. Both naming conventions are preserved (see MIGRATION.md).
+# the *imputed* tracks. Both naming conventions are kept.
 bigwig_dir: "{data}/bigwig_tracks"
 
 # --- Intermediate outputs (produced by the pipeline) ------------------------
@@ -84,9 +73,9 @@ outputs:
   borzoi_gene_predictions:  "{data}/borzoi_gene_predictions"     # model_{rep}_{gene}.npy
   borzoi_performance:       "{data}/borzoi_performance"          # per-variant along_sequence/along_track .npy
   borzoi_gene_performance:  "{data}/borzoi_gene_performance"     # per-gene along_sequence/along_track .npy
-  sequence_features:        "{data}/sequence_features"           # variant_features.py output ({variant}.pkl)
-  sequence_features_new:    "{data}/sequence_features_new"        # {variant}.parquet (read by compile)
-  gene_sequence_features:   "{data}/gene_sequence_features_new"   # {gene}.parquet (read by compile)
+  sequence_features:        "{data}/sequence_features"           # legacy pkl location (unused)
+  sequence_features_new:    "{data}/sequence_features_new"        # {variant}.parquet (variant_features.py -> compile)
+  gene_sequence_features:   "{data}/gene_sequence_features_new"   # {gene}.parquet (gene_sequence_features.py -> compile)
   gene_data_features:       "{data}/gene_data_features_new"       # {gene}.pkl (gene_data_features.py)
   final_feature_set:        "{data}/final_feature_set_latest"     # {variant}_{gene}_{tissue}.parquet (compile)
 
@@ -94,6 +83,11 @@ outputs:
 models:
   models_dir:   "models"                                          # xgb_model_center_196kb_{fold}_chromosomal.json
   yprob_dir:    "yprob"                                           # yprob_{fold}.npy (held-out probabilities)
+
+# --- Analysis outputs (stages 07 / 08) --------------------------------------
+analysis:
+  attribution_dir: "analysis/attribution"                         # SHAP / UMAP / cluster outputs (stage 07)
+  evaluation_dir:  "analysis/evaluation"                          # coverage / accuracy / per-tissue (stage 08)
 
 other_models:
   alphagenome_predictions: "{data}/alphagenome_predictions"       # {i}_ref.npy / {i}_alt.npy (768 tracks)

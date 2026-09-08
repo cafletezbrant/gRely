@@ -8,8 +8,14 @@ import gc
 # import matplotlib.gridspec as gridspec
 import numpy as np
 from tqdm import tqdm
+import sys
+from pathlib import Path
 
-df = pd.read_parquet('task_sign_matching_with_features.parquet')
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from grely.paths import load_paths
+P = load_paths()
+
+df = pd.read_parquet(P['tables']['feature_matrix'])
 features=list(df.columns[40:]) + ['avg_logSum']
 
 cols_to_drop= ['fine_map_pip', 'credible_set_size', 'credible_set_min_r2', 'eqtl_study_sample_size', 'eqtl_pvalue', 'eqtl_se', 'minor_allele_freq', 'alt_allele_count',
@@ -241,7 +247,8 @@ def get_gene_slice_ag(gene_to_exons, gene_id, center_pos, n_bins,
 
 
 # -------- Main loop --------
-gene_to_exons = load_exons_from_gtf('gencode41_basic_nort.gtf')
+ag_pred_dir = P['other_models']['alphagenome_predictions']
+gene_to_exons = load_exons_from_gtf(P['reference']['gencode_gtf'])
 
 vep_scores, sign_matches, gene_slice_lens = [], [], []
 for i in tqdm(range(len(df)), desc="Computing AlphaGenome VEPs"):
@@ -252,8 +259,8 @@ for i in tqdm(range(len(df)), desc="Computing AlphaGenome VEPs"):
     beta    = row['beta']
     rna_idx = tissue_to_rna_idx[row['target_tissue']]
 
-    ref_pred = np.load(f'alphagenome_predictions/{i}_ref.npy')   # (bins, 768)
-    alt_pred = np.load(f'alphagenome_predictions/{i}_alt.npy')   # (bins, 768)
+    ref_pred = np.load(f'{ag_pred_dir}/{i}_ref.npy')   # (bins, 768)
+    alt_pred = np.load(f'{ag_pred_dir}/{i}_alt.npy')   # (bins, 768)
 
     # ref_pred = np.load(f'torch_predictions/{i}_ref.npy')   # (bins, 768)
     # alt_pred = np.load(f'torch_predictions/{i}_alt.npy')   # (bins, 768)
@@ -292,4 +299,4 @@ df['alphagenome_vep']             = np.asarray(vep_scores)
 df['alphagenome_sign_concordant'] = np.asarray(sign_matches)
 df['alphagenome_gene_slice_bins']      = np.asarray(gene_slice_lens)
 
-df.to_csv('alphagenome_pred.csv', index=False)
+df.to_csv(P['other_models']['alphagenome_pred_csv'], index=False)

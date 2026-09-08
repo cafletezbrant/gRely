@@ -7,9 +7,9 @@
 #SBATCH --mem=300G                          # Memory total in MB
 #SBATCH --time=1-00:00                     # Runtime in D-HH:MM
 #SBATCH --qos=1d                           # QoS policy
-#SBATCH --output=/home/rafia1/scratch/outputs/neg_%A_%a.out
-#SBATCH --error=/home/rafia1/scratch/errors/neg_%A_%a.err
+#SBATCH --output=logs/neg_%A_%a.out
+#SBATCH --error=logs/neg_%A_%a.err
 
 ml load Miniforge3
 conda activate dream
-python /home/rafia1/scratch/codes/find_neg.py $SLURM_ARRAY_TASK_ID
+python scripts/01_labels/find_neg.py $SLURM_ARRAY_TASK_ID

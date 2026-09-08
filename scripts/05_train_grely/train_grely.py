@@ -26,14 +26,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from grely import data as gdata          # noqa: E402
 from grely import train as gtrain        # noqa: E402
+from grely.paths import load_paths       # noqa: E402
 
 
 def main():
+    PATHS = load_paths()
     ap = argparse.ArgumentParser(description="Train the gRely meta-model.")
-    ap.add_argument("--matrix", required=True,
+    ap.add_argument("--matrix", default=PATHS['tables']['feature_matrix'],
                     help="Compiled feature matrix parquet (stage 04 output, with labels).")
-    ap.add_argument("--out-models", default="models", help="Directory for saved fold models.")
-    ap.add_argument("--out-prob", default="yprob",
+    ap.add_argument("--out-models", default=PATHS['models']['models_dir'],
+                    help="Directory for saved fold models.")
+    ap.add_argument("--out-prob", default=PATHS['models']['yprob_dir'],
                     help="Directory for held-out probabilities (pass '' to skip).")
     ap.add_argument("--fold", default=None,
                     help="Train only this fold (e.g. set5). Default: all folds.")

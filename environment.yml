@@ -2,11 +2,11 @@
 #
 # The Borzoi prediction stage additionally requires TensorFlow + the Borzoi
 # package (baskerville / borzoi_helpers) from https://github.com/calico/borzoi
-# in its own GPU env (the original runs used a conda env named `borzoi` for GPU
-# work and `dream` for eQTL curation).
+# in its own GPU env (e.g. a conda env named `borzoi` for GPU work and `dream`
+# for eQTL curation).
 #
-# Versions are UNPINNED (see requirements.txt for the rationale). Pin from the
-# live environment before release.
+# Versions are UNPINNED (see requirements.txt for the rationale). Pin from your
+# working environment before release.
 name: grely
 channels:
   - conda-forge
@@ -29,6 +29,11 @@ dependencies:
   - biopython
   - pip:
       - xgboost
+      # feature-attribution analysis (stage 07): pip install -e ".[interpret]"
+      # - shap
+      # - umap-learn
+      # - scikit-learn
+      # - matplotlib
       # - tensorflow          # enable for the Borzoi prediction stage
       # editable install of this repo's package:
       - -e .

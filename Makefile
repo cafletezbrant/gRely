@@ -1,16 +1,19 @@
 # ===========================================================================
 # gRely — tool workflow
 #
-# Three stages: (1) extract the feature matrix, (2) train gRely, (3) apply it —
-# including to other S2F models. The feature-extraction stages are SLURM ARRAY
-# jobs over tens of thousands of (variant / gene) shards and depend on
-# cluster-resident reference data (hg38, Borzoi weights, TFRecords, eQTL
-# Catalogue); the ready-made array scripts are under scripts/slurm/. Training
-# and applying run on a single machine from the compiled matrix.
+# Stages: (1) extract the feature matrix, (2) train gRely, (3) apply it to other
+# S2F models, (4) analyze its attributions, (5) evaluate its reliability. The
+# feature-extraction stages are SLURM ARRAY jobs over tens of thousands of
+# (variant / gene) shards and depend on cluster-resident reference data (hg38,
+# Borzoi weights, TFRecords, eQTL Catalogue); the ready-made array scripts are
+# under scripts/slurm/. Training and everything downstream run on a single
+# machine from the compiled matrix.
 #
-#   [01 labels, 02 preds, 03 perf] -> 04 featurize -> MATRIX
-#   MATRIX -> 05 train_grely  -> models/{fold}.json
-#   MATRIX + other-model VEPs -> 06 apply -> transfer report
+#   [01 labels, 02 preds, 03 perf] -> 04 featurize   -> MATRIX
+#   MATRIX -> 05 train_grely                          -> models/{fold}.json
+#   MATRIX + other-model VEPs -> 06 apply             -> transfer report
+#   MATRIX + models -> 07 attribution                 -> SHAP / UMAP / clusters
+#   MATRIX + models -> 08 evaluate                    -> coverage / accuracy / per-tissue
 #
 # Config: configs/paths.yaml (data roots), configs/grely.yaml (model / folds).
 # ===========================================================================
@@ -21,7 +24,8 @@ MODELS ?= models
 SHARD ?= 0
 
 .PHONY: help env labels predictions performance features \
-        train apply-alphagenome apply-enformer alphagenome-vep enformer-vep clean-pyc
+        train apply-alphagenome apply-enformer alphagenome-vep enformer-vep \
+        attribution evaluate clean-pyc
 
 help:
 	@echo "gRely stages:"
@@ -35,6 +39,8 @@ help:
 	@echo "  make enformer-vep        # 06: compute Enformer VEPs"
 	@echo "  make apply-alphagenome   # 06: apply gRely to AlphaGenome VEPs (transfer report)"
 	@echo "  make apply-enformer      # 06: apply gRely to Enformer VEPs (transfer report)"
+	@echo "  make attribution         # 07: SHAP / UMAP / clusters / failure modes"
+	@echo "  make evaluate            # 08: coverage / accuracy / Table 1 / per-tissue"
 	@echo "Vars: MATRIX=$(MATRIX)  MODELS=$(MODELS)  SHARD=$(SHARD)"
 
 env:
@@ -82,6 +88,16 @@ apply-enformer:
 	$(PY) scripts/06_apply_other_models/apply_grely.py --matrix $(MATRIX) \
 	  --other-model-csv data/enformer_pred.csv --sign-col enformer_sign_concordant \
 	  --model-dir $(MODELS)
+
+# --- Stage 07: analyze feature attributions (SHAP / UMAP / clusters) ---------
+attribution:
+	$(PY) scripts/07_analyze_attributions/analyze_attributions.py \
+	  --matrix $(MATRIX) --model-dir $(MODELS)
+
+# --- Stage 08: evaluate reliability (coverage / accuracy / per-tissue) --------
+evaluate:
+	$(PY) scripts/08_evaluate/evaluate_grely.py \
+	  --matrix $(MATRIX) --model-dir $(MODELS)
 
 clean-pyc:
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} + ; \

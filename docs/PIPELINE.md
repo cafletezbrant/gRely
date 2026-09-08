@@ -2,14 +2,14 @@
 
 Stages match the `scripts/NN_*` folders. Stages 01–04 (feature extraction) are
 SLURM **array** jobs (shard index = `sys.argv[1]`); the `scripts/slurm/*.sh`
-wrappers submit them. Stages 05–06 run on a single machine from the compiled
+wrappers submit them. Stages 05–08 run on a single machine from the compiled
 matrix. Paths below use the logical names from `configs/paths.yaml`.
 
 ```
- 01 labels ─┐
-            ├─► 04 featurization ─► task_sign_matching_with_features.parquet ─┬─► 05 train_grely ─► models/{fold}.json
- 02 preds ──┤                                                                 └─► 06 apply (AlphaGenome / Enformer)
- 03 perf ───┘
+ 01 labels ─┐                                                                 ┌─► 05 train_grely ─► models/{fold}.json
+            ├─► 04 featurization ─► task_sign_matching_with_features.parquet ─┼─► 06 apply (AlphaGenome / Enformer)
+ 02 preds ──┤                                                                 ├─► 07 attribution (SHAP / UMAP / clusters)
+ 03 perf ───┘                                                                 └─► 08 evaluate (coverage / accuracy / per-tissue)
 ```
 
 ## 01 — Label generation  (`scripts/01_labels/`)
@@ -47,19 +47,16 @@ Pearson correlation of Borzoi predictions vs the observed TFRecord targets, both
 ## 04 — Featurization  (`scripts/04_featurization/`)
 | Script | Writes | Notes |
 |---|---|---|
-| `variant_features.py <shard>` | `outputs.sequence_features/{variant}.pkl` | k-mer counts (11/21/41), GC (5 windows), EpiMap chromatin stats (11 tracks × 5 windows) |
+| `variant_features.py <shard>` | `outputs.sequence_features_new/{variant}.parquet` | variant k-mer counts (11/21/41), GC (5 windows), EpiMap chromatin stats (11 tracks × 5 windows) |
+| `gene_sequence_features.py <shard>` | `outputs.gene_sequence_features/{gene}.parquet` | gene-body GC + EpiMap chromatin stats over the gene span (11 tracks) |
 | `gene_data_features.py <shard>` | `outputs.gene_data_features/{gene}.pkl` | observed-expression features from TFRecord targets (per-GTEx-track) |
 | `compile_final_feature_set.py <shard>` | `outputs.final_feature_set/{variant}_{gene}_{tissue}.parquet` | **the master featurizer** — merges 9 feature blocks into one row per tuple |
 
-All shards are concatenated with the labels into
-`tables.feature_matrix` = `task_sign_matching_with_features.parquet`
-(the concatenation is a short glue step; the master matrix is the interface into
-stages 05–06). See [`FEATURES.md`](FEATURES.md) for the blocks.
-
-> Two known gaps (see `MIGRATION.md`): `compile` reads
-> `sequence_features_new/{variant}.parquet` (a pkl→parquet rename of stage-04
-> output) and `gene_sequence_features_new/{gene}.parquet` (**no producer script
-> supplied**).
+`compile_final_feature_set.py` reads the four blocks above (plus the Borzoi
+prediction / performance outputs from stages 02–03) and merges them. All shards
+are then concatenated with the labels into `tables.feature_matrix` =
+`task_sign_matching_with_features.parquet`, the master matrix that feeds stages
+05–08. See [`FEATURES.md`](FEATURES.md) for the feature blocks.
 
 ## 05 — Train gRely  (`scripts/05_train_grely/`)
 | Script | Reads | Writes |
@@ -81,3 +78,32 @@ Library: `grely.other_models` (AlphaGenome/Enformer gene-slice geometry) and
 `grely.apply` (`load_model`, `score`, `score_by_fold`, `transfer_eval`). The
 Borzoi-trained fold models are applied **without retraining** — each fold's model
 scores exactly its held-out (chr1–3 ∩ held-out-tissues) tuples.
+
+## 07 — Analyze feature attributions  (`scripts/07_analyze_attributions/`)
+| Script | Reads | Writes (`analysis.attribution_dir`) |
+|---|---|---|
+| `analyze_attributions.py --matrix … --model-dir … --n-clusters 14` | `tables.feature_matrix` + `models/` | `global_importance.csv`, `family_importance.csv`, `embedding.csv`, `cluster_summary.csv`, `failure_enrichment.csv`, `embedding_by_*.png` |
+
+Library: `grely.attribution`. Attributions are computed **out-of-fold**
+(`shap_out_of_fold` — each held-out prediction is attributed by the model that
+never saw it), then embedded (`umap_embedding`) and clustered
+(`cluster_embedding`). `global_importance` / `family_importance` rank features and
+feature families; `cluster_summary` gives per-cluster size, mean gRely score, sign
+concordance, and top features; `failure_enrichment` reports which feature families
+are over-represented among low-confidence predictions (`grely_prob` below a
+threshold, default 0.2). Requires the `interpret` extra (shap, umap-learn,
+scikit-learn, matplotlib).
+
+## 08 — Evaluate reliability  (`scripts/08_evaluate/`)
+| Script | Reads | Writes (`analysis.evaluation_dir`) |
+|---|---|---|
+| `evaluate_grely.py --matrix … --model-dir …` | `tables.feature_matrix` + `models/` | `coverage_accuracy_grely.csv`, `coverage_accuracy_magnitude.csv`, `average_precision_by_fold.csv`, `threshold_table.csv`, `per_tissue_accuracy.csv`, `effect_size_correlation.csv`, `mean_grely_per_tissue.csv` |
+
+Library: `grely.evaluate`, on the pooled held-out predictions from
+`grely.apply.predict_out_of_fold`. `coverage_curve` sweeps score (or |avg_logSum|)
+thresholds for accuracy + gene coverage vs. coverage; `precision_recall` /
+`average_precision_by_fold` score the sign-concordance task; `threshold_table`
+compares |VEP| thresholding to gRely quantile filtering, including the low-effect
+regime magnitude filtering discards; `per_tissue_quantile_accuracy`,
+`effect_size_correlation`, and `mean_grely_per_tissue` cover per-tissue
+reliability. Core dependencies only (numpy / pandas / scipy).

@@ -27,11 +27,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from grely import apply as gapply   # noqa: E402
 from grely import data as gdata     # noqa: E402
+from grely.paths import load_paths  # noqa: E402
 
 
 def main():
+    PATHS = load_paths()
     ap = argparse.ArgumentParser(description="Apply gRely to another model's VEPs.")
-    ap.add_argument("--matrix", required=True,
+    ap.add_argument("--matrix", default=PATHS['tables']['feature_matrix'],
                     help="Feature matrix parquet (same features used to train gRely).")
     ap.add_argument("--other-model-csv", default=None,
                     help="CSV with the other model's sign-concordance column; merged onto --matrix.")
@@ -39,7 +41,8 @@ def main():
                     help="Boolean column: is the other model's VEP sign-concordant with the eQTL?")
     ap.add_argument("--join-on", default="variant,gene_id,target_tissue",
                     help="Comma-separated keys to merge --other-model-csv onto the matrix.")
-    ap.add_argument("--model-dir", default="models", help="Directory with trained fold models.")
+    ap.add_argument("--model-dir", default=PATHS['models']['models_dir'],
+                    help="Directory with trained fold models.")
     ap.add_argument("--config", default=None, help="Path to grely.yaml.")
     ap.add_argument("--out-csv", default=None, help="Optional path to write the scored table.")
     args = ap.parse_args()

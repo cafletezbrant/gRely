@@ -1,25 +1,12 @@
-"""Shared numerical helpers used across the gRely featurization pipeline.
+"""Shared numerical helpers for the gRely featurization pipeline.
 
-IMPORTANT — provenance and behavior preservation
--------------------------------------------------
-Every function in this module is a **verbatim copy** of the corresponding
-function in the original pipeline scripts (primarily
-``scripts/04_featurization/compile_final_feature_set.py``). It is provided so
-that the shared logic has a single importable home.
+Summary-statistic utilities used by ``scripts/04_featurization`` — Gini, tau,
+vector summaries, phyloP window means, specificity metrics, and friends.
 
-The pipeline scripts under ``scripts/`` still contain their own inline copies
-of these functions and have deliberately been left untouched, because the
-restructuring could not be executed/verified in this environment and the
-project's rule is that any change in numerical output is a bug, not an
-improvement. Wiring the scripts to import from here is a recommended *next*
-step that must be done against a live environment and validated for numerical
-equivalence (see ``MIGRATION.md`` → "Unverified / next steps").
-
-Do NOT "unify" this module with ``extract_celltype_features``: that function
-diverges between ``gene_data_features.py`` (uses ``scipy.stats.variation``) and
-``compile_final_feature_set.py`` (uses a stabilized ``nanstd/nanmean``). That
-divergence is intentional-looking and is documented in ``MIGRATION.md``; it is
-therefore *not* centralized here.
+Note: ``extract_celltype_features`` is intentionally not shared here. The
+variant- and gene-level featurizers compute ``celltype_cv`` differently — one
+uses ``scipy.stats.variation``, the other a stabilized ``nanstd/nanmean`` — so
+they are two distinct computations and must not be merged.
 """
 
 import numpy as np

@@ -19,7 +19,11 @@ import tensorflow as tf
 from scipy.stats import (entropy, kurtosis, pearsonr, skew, spearmanr,
                            variation)
 from tqdm import tqdm
-sys.path.append('/home/rafia1/scratch/borzoi/examples') 
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from grely.paths import load_paths
+P = load_paths()
+sys.path.append(P['roots']['borzoi_examples'])
 from baskerville import dna
 from baskerville import gene as bgene
 from baskerville import seqnn
@@ -226,14 +230,16 @@ def extract_celltype_features(target, gene_slice, sparsity_threshold=1e-3):
 
     return result
 
-file_path = '/gstore/data/resbioai/grelu/borzoi-data/hg38/sequences.bed'
+file_path = P['reference']['borzoi_sequences_bed']
 seq_mappingF = pd.read_csv(file_path, sep='\t', header=None, names=['chrom', 'start', 'end', 'fold'])
 seq_mappingF['tf_label'] = seq_mappingF.groupby('fold').cumcount() // 16
 seq_mappingF['tfrecord'] = seq_mappingF.apply(lambda row: f"{row['fold']}-{row['tf_label']}.tfr", axis=1)
 seq_mappingF['example_number'] = seq_mappingF.groupby('fold').cumcount() % 16
-transcriptome = bgene.Transcriptome('../data/gencode41_basic_nort.gtf')
+transcriptome = bgene.Transcriptome(P['reference']['gencode_gtf'])
 
-df=pd.read_csv('../data/all_genes.csv', sep='\t')
+gene_feat_dir = P['outputs']['gene_data_features']
+os.makedirs(gene_feat_dir, exist_ok=True)
+df=pd.read_csv(P['tables']['all_genes'], sep='\t')
 job_id=int(sys.argv[1])
 df=df.iloc[job_id*100:job_id*100+100].reset_index(drop=True)
 
@@ -270,7 +276,7 @@ for seq_id in tqdm(range(len(df))):
             "sequence": tf.io.FixedLenFeature([], tf.string),
         }
         
-        dataset = tf.data.TFRecordDataset(f"/gstore/data/resbioai/grelu/borzoi-data/hg38/tfrecords/{selected_record.tfrecord}", compression_type="ZLIB")
+        dataset = tf.data.TFRecordDataset(f"{P['reference']['borzoi_tfrecords']}/{selected_record.tfrecord}", compression_type="ZLIB")
         i = selected_record.example_number
         
         counter = 0
@@ -301,7 +307,7 @@ for seq_id in tqdm(range(len(df))):
         celltype_features = extract_celltype_features(target, gene_slice)
         features.update(celltype_features)
 
-        with open(f"../data/gene_data_features_new/{gene_id}.pkl", 'wb') as f:
+        with open(os.path.join(gene_feat_dir, f"{gene_id}.pkl"), 'wb') as f:
             pickle.dump(features, f)    
     
     except Exception as e:

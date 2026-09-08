@@ -1,15 +1,13 @@
 # ---------------------------------------------------------------------------
 # gRely meta-model configuration.
 #
-# Values are copied VERBATIM from the source so they document (not redefine)
-# what was run for the paper:
-#   - XGBoost hyperparameters -> notebooks/figure_1.ipynb (training cell)
-#   - fold / tissue-set definitions -> scripts/05_other_models/alphagenome.py
-#     and notebooks/figure_1.ipynb (they are identical), Table 2 of the paper
-#   - tissue -> Borzoi RNA-track index map -> scripts/05_other_models/alphagenome.py
+# Central definition of the meta-model hyperparameters, the cross-validation
+# folds (GTEx tissue sets + chromosome split), the feature selection, and the
+# tissue -> output-track index maps used to score other models.
 #
-# These are RESULTS, not style. Do not change them; changing a seed, threshold,
-# or hyperparameter changes the paper's numbers.
+# These values determine the trained model. Changing a seed, threshold, or
+# hyperparameter changes gRely's behavior, so treat them as fixed settings
+# unless you intend to retrain.
 # ---------------------------------------------------------------------------
 
 meta_model:
@@ -26,7 +24,7 @@ meta_model:
   scale_pos_weight: auto
 
 features:
-  # Feature-matrix column selection (verbatim from the training notebook):
+  # Feature-matrix column selection:
   #   features = list(df.columns[first_feature_col_index:]) + [magnitude_feature]
   #   features = [f for f in features if f not in leakage_columns]
   # The first columns are identifier/label/metadata; the leakage columns are

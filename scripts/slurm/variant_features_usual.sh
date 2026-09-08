@@ -7,9 +7,9 @@
 #SBATCH --mem=16G                          # Memory total in MB
 #SBATCH --time=0-24:00                     # Runtime in D-HH:MM
 #SBATCH --qos=1d                           # QoS policy
-#SBATCH --output=/home/rafia1/scratch/outputs/features_%A_%a.out
-#SBATCH --error=/home/rafia1/scratch/errors/features_%A_%a.err
+#SBATCH --output=logs/features_%A_%a.out
+#SBATCH --error=logs/features_%A_%a.err
 
 ml load Miniforge3
 conda activate dream
-python /home/rafia1/scratch/codes/variant_features.py $SLURM_ARRAY_TASK_ID
+python scripts/04_featurization/variant_features.py $SLURM_ARRAY_TASK_ID

@@ -13,9 +13,14 @@ prediction is correct. This package exposes the tool as three stages:
 3. **Applying to other models** — `grely.apply` scores any feature table with a
    trained model (including AlphaGenome / Enformer VEPs), and
    `grely.other_models` provides the gene-slice geometry to compute those VEPs.
+4. **Feature-attribution analysis** — `grely.attribution` computes per-prediction
+   SHAP attributions, embeds and clusters predictions (UMAP + KMeans), and
+   analyzes failure modes by feature family.
 
-Path/model configuration is read from `configs/paths.yaml` (`grely.paths`) and
-`configs/grely.yaml` (`grely.data.load_config`).
+`grely.evaluate` measures reliability vs. coverage, compares gRely to effect-size
+filtering, and reports per-tissue reliability. Path/model configuration is read
+from `configs/paths.yaml` (`grely.paths`) and `configs/grely.yaml`
+(`grely.data.load_config`).
 """
 
 __version__ = "0.1.0"
@@ -26,3 +31,5 @@ from . import data  # noqa: F401
 from . import train  # noqa: F401
 from . import apply  # noqa: F401
 from . import other_models  # noqa: F401
+from . import attribution  # noqa: F401
+from . import evaluate  # noqa: F401

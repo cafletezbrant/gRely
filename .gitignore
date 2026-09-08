@@ -25,6 +25,13 @@ _schema.json
 models/
 yprob/
 
+# --- SLURM logs -------------------------------------------------------------
+logs/*
+!logs/.gitkeep
+
+# --- Feature-attribution analysis outputs (regenerated) ---------------------
+analysis/
+
 # --- Python -----------------------------------------------------------------
 __pycache__/
 *.py[cod]

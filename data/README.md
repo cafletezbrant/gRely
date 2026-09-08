@@ -1,12 +1,12 @@
 # data/
 
-This directory is **gitignored** — no data is committed. It is the local root
-that `configs/paths.yaml` `roots.data` points at (originally
-`/home/rafia1/scratch/data`, equivalently `../data` when a script is launched
-from `$SCRATCH/codes`).
+This directory is the default data root for the pipeline: `configs/paths.yaml`
+`roots.data` resolves here (relative to the repo root). Its contents are
+**gitignored** — populate it from the public sources listed in the top-level
+README. To store data elsewhere, point a root at an absolute path in
+`configs/paths.yaml`, or set the `GRELY_DATA` environment variable.
 
-Populate it from the public sources listed in the top-level README. Expected
-layout (logical names in parentheses match `configs/paths.yaml`):
+Expected layout (logical names in parentheses match `configs/paths.yaml`):
 
 ```
 data/
@@ -19,12 +19,16 @@ data/
 ├── targets_human.txt.gz            (borzoi.targets_human_gz)      # 7611 tracks
 ├── bigwig_tracks/*.bigWig          (bigwig_dir)                   # EpiMap "Other"
 │
+├── eqtl_catalogue/{susie,sumstats}/       (roots.eqtl_catalogue)  # eQTL Catalogue
+├── borzoi_data/{sequences.bed,tfrecords}/ (roots.borzoi_data)     # Borzoi training data
+│
 ├── borzoi_gtex_common.csv          (tables.borzoi_gtex_common)    # study/dataset index
 ├── all_curated.csv                 (tables.all_curated)           # pos+neg tuples
 ├── all_sequences.csv               (tables.all_sequences)         # variant list
 ├── all_genes.csv                   (tables.all_genes)             # gene list
-├── borzoi_tracks_matched_gtex.csv  (tables.borzoi_tracks_matched) # Table S3
+├── borzoi_tracks_matched_gtex.csv  (tables.borzoi_tracks_matched)
 ├── gene_to_tss.csv                 (tables.gene_to_tss)
+├── task_sign_matching_with_features.parquet  (tables.feature_matrix)  # stage 04 -> master matrix
 │
 ├── pos_eqtls/  neg_eqtls/                                         # stage 01
 ├── borzoi_predictions/  borzoi_gene_predictions/                 # stage 02
@@ -34,7 +38,6 @@ data/
 └── final_feature_set_latest/       (outputs.final_feature_set)   # stage 04 -> matrix
 ```
 
-Read-only cluster reference stores (not under `data/`; see `configs/paths.yaml`
-`roots.eqtl_catalogue` and `roots.borzoi_data`):
-- `/gstore/data/humgenet/ref/eqtl_catalogue/{susie,sumstats}` — eQTL Catalogue
-- `/gstore/data/resbioai/grelu/borzoi-data/hg38/{sequences.bed,tfrecords}` — Borzoi
+The two reference stores are large external datasets. Place (or symlink) them at
+`data/eqtl_catalogue/` and `data/borzoi_data/`, or repoint
+`roots.eqtl_catalogue` / `roots.borzoi_data` at wherever you keep them.

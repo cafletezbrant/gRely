@@ -8,9 +8,9 @@
 #SBATCH --gres=gpu:1                          # gpu
 #SBATCH --time=0-6:00                     # Runtime in D-HH:MM
 #SBATCH --qos=1d                           # QoS policy
-#SBATCH --output=/home/rafia1/scratch/outputs/features_%A_%a.out
-#SBATCH --error=/home/rafia1/scratch/errors/features_%A_%a.err
+#SBATCH --output=logs/features_%A_%a.out
+#SBATCH --error=logs/features_%A_%a.err
 
 ml load Miniforge3
 conda activate borzoi
-python /home/rafia1/scratch/codes/compile_final_feature_set.py $SLURM_ARRAY_TASK_ID
+python scripts/04_featurization/compile_final_feature_set.py $SLURM_ARRAY_TASK_ID

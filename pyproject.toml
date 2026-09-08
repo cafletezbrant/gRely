@@ -13,10 +13,8 @@ authors = [
     { name = "Gokcen Eraslan" },
     { name = "Kipper Fletez-Brant" },
 ]
-# NB: versions are intentionally left unpinned here. The pipeline ran in a
-# cluster conda env (`borzoi` / `dream`) that could not be introspected during
-# restructuring. Pin exact versions from your live environment before release
-# (see environment.yml and MIGRATION.md → "Environment").
+# NB: versions are intentionally left unpinned here. Pin exact versions from
+# your working environment before release (see environment.yml).
 dependencies = [
     "numpy",
     "pandas",
@@ -41,6 +39,13 @@ dependencies = [
 # from https://github.com/calico/borzoi — see README.
 borzoi = [
     "tensorflow",
+]
+# Feature-attribution analysis (stage 07: grely.attribution).
+interpret = [
+    "shap",
+    "umap-learn",
+    "scikit-learn",
+    "matplotlib",
 ]
 
 [tool.setuptools.packages.find]

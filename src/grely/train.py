@@ -1,9 +1,7 @@
 """Train the gRely meta-model (XGBoost) with leave-one-tissue-set-and-chr1-3-out CV.
 
-Faithful extraction of the training logic from the original notebook. The model,
-hyperparameters, per-fold ``scale_pos_weight = n_neg / n_pos``, and random seed
-are unchanged (see ``configs/grely.yaml`` → ``meta_model``); only the packaging
-into an importable, testable function is new.
+The model, hyperparameters, per-fold ``scale_pos_weight = n_neg / n_pos``, and
+random seed are defined in ``configs/grely.yaml`` → ``meta_model``.
 """
 
 from __future__ import annotations
@@ -24,7 +22,7 @@ from .data import (
 
 
 def make_model(scale_pos_weight: float, config: dict | None = None):
-    """Construct the gRely ``XGBClassifier`` with the paper's hyperparameters."""
+    """Construct the gRely ``XGBClassifier`` from the configured hyperparameters."""
     from xgboost import XGBClassifier  # imported lazily so the package imports without xgboost
 
     mm = (config or load_config())["meta_model"]

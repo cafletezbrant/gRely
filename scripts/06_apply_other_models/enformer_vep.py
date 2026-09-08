@@ -8,11 +8,10 @@ these predictions via ``apply_grely.py``.
 
 Enformer per-allele predictions are expected as ``{pred_dir}/{i}_ref.npy`` and
 ``{i}_alt.npy`` of shape (896, 5313) (896 output bins x Enformer human tracks),
-where ``i`` is the row index into the test-tuple table. Running Enformer itself
-is out of scope here (use the published Enformer model/weights).
+where ``i`` is the row index into the test-tuple table. Producing those arrays
+is a separate step, run with the published Enformer model.
 
-The tissue -> CAGE track map and VEP loop are copied verbatim from the original
-Enformer analysis; the gene-slice geometry is imported from ``grely.other_models``.
+The gene-slice geometry is imported from ``grely.other_models``.
 """
 
 import argparse
@@ -26,12 +25,13 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from grely import data as gdata                              # noqa: E402
+from grely.paths import load_paths                           # noqa: E402
 from grely.other_models import (                             # noqa: E402
     get_gene_slice_enformer,
     load_exons_from_gtf,
 )
 
-# Enformer CAGE output-track index per GTEx tissue (verbatim from the analysis).
+# Enformer CAGE output-track index per GTEx tissue.
 tissue_to_cage_idx = {
     # ---- set1 ----
     "brain_amygdala":              5095,  # amygdala, adult
@@ -102,11 +102,15 @@ def build_test_tuples(matrix_path, cfg):
 
 
 def main():
+    PATHS = load_paths()
     ap = argparse.ArgumentParser(description="Compute Enformer VEPs for gRely test tuples.")
-    ap.add_argument("--matrix", required=True, help="Feature matrix parquet (test tuples drawn from it).")
-    ap.add_argument("--pred-dir", required=True, help="Directory of Enformer {i}_ref.npy / {i}_alt.npy.")
-    ap.add_argument("--gtf", required=True, help="GENCODE v41 GTF (gencode41_basic_nort.gtf).")
-    ap.add_argument("--out-csv", default="enformer_pred.csv")
+    ap.add_argument("--matrix", default=PATHS['tables']['feature_matrix'],
+                    help="Feature matrix parquet (test tuples drawn from it).")
+    ap.add_argument("--pred-dir", default=PATHS['other_models']['enformer_predictions'],
+                    help="Directory of Enformer {i}_ref.npy / {i}_alt.npy.")
+    ap.add_argument("--gtf", default=PATHS['reference']['gencode_gtf'],
+                    help="GENCODE v41 GTF (gencode41_basic_nort.gtf).")
+    ap.add_argument("--out-csv", default=PATHS['other_models']['enformer_pred_csv'])
     ap.add_argument("--config", default=None, help="Path to grely.yaml.")
     args = ap.parse_args()
 

@@ -3,17 +3,22 @@ import pyranges as pr
 import os
 from tqdm import tqdm
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from grely.paths import load_paths
+P = load_paths()
 
 job_id = int(sys.argv[1])
-base_path = '/gstore/data/humgenet/ref/eqtl_catalogue/susie/'
-output_dir = '../data/neg_eqtls'
+base_path = P['eqtl']['susie_dir']
+output_dir = P['outputs']['neg_eqtls']
 os.makedirs(output_dir, exist_ok=True)
 
-final_qtls = pd.read_csv('../data/borzoi_gtex_common.csv', sep='\t')
+final_qtls = pd.read_csv(P['tables']['borzoi_gtex_common'], sep='\t')
 study_id = final_qtls.iloc[job_id]['study_id']
 dataset_id = final_qtls.iloc[job_id]['dataset_id']
 
-file_path = f'/gstore/data/humgenet/ref/eqtl_catalogue/sumstats/{study_id}/{dataset_id}/{dataset_id}.all.tsv.gz'
+file_path = os.path.join(P['eqtl']['sumstats_dir'], study_id, dataset_id, f'{dataset_id}.all.tsv.gz')
 sumstats=pd.read_csv(file_path, sep='\t', compression='gzip')
 
 ### filter for maf
@@ -58,7 +63,7 @@ if sumstats['pos'].isna().any():
     print(f"Warning: {sumstats['pos'].isna().sum()} rows have non-numeric positions and will be excluded.")
     sumstats = sumstats.dropna(subset=['pos'])
 
-blacklist = pd.read_csv('../data/hg38-blacklist.v2.bed', sep='\t', header=None)
+blacklist = pd.read_csv(P['reference']['blacklist'], sep='\t', header=None)
 blacklist.columns = ['Chromosome', 'Start', 'End', 'Type']
 blacklist['Chromosome'] = blacklist['Chromosome'].astype(str)
 blacklist_pr = pr.PyRanges(blacklist[['Chromosome', 'Start', 'End']])
@@ -93,7 +98,7 @@ for col in final_qtls.columns:
 columns_to_drop = ['ftp_path', 'ftp_cs_path', 'ftp_lbf_path']
 df_snps_only = df_snps_only.drop(columns=columns_to_drop, errors='ignore')
 
-blacklist = pd.read_csv('../data/hg38-blacklist.v2.bed', sep='\t', header=None)
+blacklist = pd.read_csv(P['reference']['blacklist'], sep='\t', header=None)
 blacklist.columns = ['Chromosome', 'Start', 'End', 'Type']
 blacklist['Chromosome'] = blacklist['Chromosome'].astype(str)
 blacklist_pr = pr.PyRanges(blacklist[['Chromosome', 'Start', 'End']])

@@ -1,20 +1,14 @@
 """Config-driven path resolution for gRely.
 
-This is **additive** helper code — it does not change any existing pipeline
-script. The original scripts hardcode absolute paths (e.g.
-``/home/rafia1/scratch/data/...``) and cluster-specific reference stores
-(``/gstore/...``). To make the repo runnable elsewhere, this module resolves
-every location from ``configs/paths.yaml`` (values there are copied verbatim
-from the scripts, so the defaults reproduce the original behavior) with an
-optional ``GRELY_CONFIG`` / ``GRELY_DATA`` environment-variable override.
+Resolves every data, reference, and output location from ``configs/paths.yaml``,
+with optional ``GRELY_CONFIG`` / ``GRELY_DATA`` environment-variable overrides,
+so the pipeline can run on any machine by editing a single file.
 
-Usage (recommended pattern when you later wire scripts to the config)::
+Usage::
 
     from grely.paths import load_paths
     P = load_paths()                 # reads configs/paths.yaml
     df = pd.read_csv(P["curated_variants"], sep="\\t")
-
-See ``MIGRATION.md`` for the full hardcoded-path inventory.
 """
 
 from __future__ import annotations
@@ -52,6 +46,13 @@ def load_paths(config_path: str | os.PathLike | None = None) -> dict:
     # Allow a single environment override of the primary data root.
     if "GRELY_DATA" in os.environ:
         roots["data"] = os.environ["GRELY_DATA"]
+
+    # Roots may be given relative to the repo (e.g. `data`, `data/borzoi_data`);
+    # resolve those against the repo root so scripts work from any directory.
+    roots = {
+        name: (str(root) if os.path.isabs(str(root)) else str((REPO_ROOT / str(root)).resolve()))
+        for name, root in roots.items()
+    }
 
     def expand(value):
         # Substitute only the known {root} names; leave runtime placeholders

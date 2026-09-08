@@ -21,7 +21,10 @@ from scipy.stats import (entropy, kurtosis, pearsonr, skew, spearmanr,
 from collections import Counter
 
 from tqdm import tqdm
-sys.path.append('/home/rafia1/scratch/borzoi/examples') 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src'))
+from grely.paths import load_paths
+P = load_paths()
+sys.path.append(P['roots']['borzoi_examples'])
 from baskerville import dna
 from baskerville import gene as bgene
 from baskerville import seqnn
@@ -320,25 +323,25 @@ def extract_celltype_features(target, gene_slice, sparsity_threshold=1e-3):
 
     return result
 
-df=pd.read_csv("../data/all_curated.csv", sep='\t')
+df=pd.read_csv(P['tables']['all_curated'], sep='\t')
 print(len(df))
 df = df.drop(columns=['rsid'])
 df = df.drop_duplicates()
 df = df.reset_index(drop=True)
 
-transcriptome = bgene.Transcriptome('../data/gencode41_basic_nort.gtf')
+transcriptome = bgene.Transcriptome(P['reference']['gencode_gtf'])
 genes = [gene_key for gene_key in transcriptome.genes.keys()]
 base_gene_ids = [gene.split('.')[0] for gene in genes]
 df=df[df['gene_id'].isin(base_gene_ids)]
 
-borzoi_track_map=pd.read_csv('../data/borzoi_tracks_matched_gtex.csv')
+borzoi_track_map=pd.read_csv(P['tables']['borzoi_tracks_matched'])
 df = df.merge(
     borzoi_track_map[['gtex', 'borzoi_tracks']],
     how='left',
     left_on='target_tissue',
     right_on='gtex'
 )
-tss_df=pd.read_csv('../data/gene_to_tss.csv', sep='\t')
+tss_df=pd.read_csv(P['tables']['gene_to_tss'], sep='\t')
 df = df.merge(
     tss_df[['gene_id', 'TSS', 'strand']],
     how='left',
@@ -349,7 +352,7 @@ job_id = int(sys.argv[1])
 df=df.iloc[job_id*1000:job_id*1000+1000].reset_index(drop=True)
 
 
-df_seq = pd.read_csv('../data/sequences_human.bed.gz', sep='\t', header=None)
+df_seq = pd.read_csv(P['reference']['sequences_bed_gz'], sep='\t', header=None)
 df_seq.columns=['chrom','start','end','fold']
 df_seq['split'] = df_seq['fold'].map({
     'fold3': 'test',
@@ -357,9 +360,19 @@ df_seq['split'] = df_seq['fold'].map({
 }).fillna('train')
 df_seq_train=df_seq[df_seq['split']=='train']
 
-bw = pyBigWig.open("../data/hg38.phyloP100way.bw")
-df_genes = pd.read_csv('/home/rafia1/scratch/data/all_genes.csv', sep='\t')
+bw = pyBigWig.open(P['reference']['phylop_bw'])
+df_genes = pd.read_csv(P['tables']['all_genes'], sep='\t')
 df_pos=df[df['type']=='positive']
+
+# Resolve output / intermediate directories once (used inside the loop below).
+SEQFEAT_DIR   = P['outputs']['sequence_features_new']
+GENESEQ_DIR   = P['outputs']['gene_sequence_features']
+GENEDATA_DIR  = P['outputs']['gene_data_features']
+GENEPERF_DIR  = P['outputs']['borzoi_gene_performance']
+VARPERF_DIR   = P['outputs']['borzoi_performance']
+PRED_DIR      = P['outputs']['borzoi_predictions']
+GENEPRED_DIR  = P['outputs']['borzoi_gene_predictions']
+FINAL_DIR     = P['outputs']['final_feature_set']
 
 centromere_telomere_info = {
 'chr1':  (125000000, 248956422),
@@ -401,7 +414,8 @@ for seq_id in range(len(df)):
         target_tissue = row['target_tissue']
 
         filename = f"{_slug(variant)}_{_slug(search_gene)}_{_slug(target_tissue)}.parquet"
-        out_dir = Path("../data/final_feature_set_latest")
+        out_dir = Path(FINAL_DIR)
+        os.makedirs(out_dir, exist_ok=True)
         out_path = out_dir / filename
 
         if out_path.exists():
@@ -558,11 +572,11 @@ for seq_id in range(len(df)):
         dist_nearest = int(np.min(np.abs(centers - pos_row)))
         basic_features['variant_distance_to_nearest_training_region_center'] = dist_nearest
 
-        file_path = f"../data/sequence_features_new/{variant}.parquet"
+        file_path = os.path.join(SEQFEAT_DIR, f"{variant}.parquet")
         vf_df = pd.read_parquet(file_path).iloc[:, 5:]
         variant_sequence_features = vf_df.add_prefix('variant_sequence_').iloc[0].to_dict()
 
-        file_path=f'../data/gene_sequence_features_new/{search_gene}.parquet'
+        file_path=os.path.join(GENESEQ_DIR, f'{search_gene}.parquet')
         vf_df = pd.read_parquet(file_path)
         gene_sequence_features = vf_df.add_prefix('gene_sequence_').iloc[0].to_dict()
 
@@ -571,7 +585,7 @@ for seq_id in range(len(df)):
 
 
 
-        # file_path = f"../data/gene_data_features_new/{search_gene}.pkl"
+        # file_path = os.path.join(GENEDATA_DIR, f"{search_gene}.pkl")
         # with open(file_path, "rb") as file:
         #     gene_data_features = pickle.load(file)
         # gtex_prefix = f"gtex_{gtex_index}"
@@ -591,7 +605,7 @@ for seq_id in range(len(df)):
         # for k in list(filtered_gene_data_features.keys()):
         #     filtered_gene_data_features[prefix+k] = filtered_gene_data_features.pop(k)
 
-        file_path = f"../data/gene_data_features_new/{search_gene}.pkl"
+        file_path = os.path.join(GENEDATA_DIR, f"{search_gene}.pkl")
         with open(file_path, "rb") as file:
             gene_data_features = pickle.load(file)
 
@@ -621,8 +635,8 @@ for seq_id in range(len(df)):
         track_list = []
 
         for rep_ix in range(1, num_reps + 1):
-            path_seq = f"/home/rafia1/scratch/data/borzoi_gene_performance/model_{rep_ix}_{search_gene}_along_sequence.npy"
-            path_track = f"/home/rafia1/scratch/data/borzoi_gene_performance/model_{rep_ix}_{search_gene}_along_track.npy"
+            path_seq = os.path.join(GENEPERF_DIR, f"model_{rep_ix}_{search_gene}_along_sequence.npy")
+            path_track = os.path.join(GENEPERF_DIR, f"model_{rep_ix}_{search_gene}_along_track.npy")
             seq_list.append(load_vector_nan_safe(path_seq))
             track_list.append(load_vector_nan_safe(path_track))
 
@@ -673,8 +687,8 @@ for seq_id in range(len(df)):
         track_list = []
 
         for rep_ix in range(1, num_reps + 1):
-            path_seq = f"../data/borzoi_performance/model_{rep_ix}_{variant}_along_sequence.npy"
-            path_track = f"../data/borzoi_performance/model_{rep_ix}_{variant}_along_track.npy"
+            path_seq = os.path.join(VARPERF_DIR, f"model_{rep_ix}_{variant}_along_sequence.npy")
+            path_track = os.path.join(VARPERF_DIR, f"model_{rep_ix}_{variant}_along_track.npy")
 
             seq_list.append(np.load(path_seq))
             track_list.append(np.load(path_track))
@@ -729,8 +743,8 @@ for seq_id in range(len(df)):
         ref_list, alt_list = [], []
 
         for rep_ix in range(1, NUM_REPLICATES + 1):
-            ref_pred = np.load(f'../data/borzoi_predictions/model_{rep_ix}_ref__{variant}.npy')[0][0]
-            alt_pred = np.load(f'../data/borzoi_predictions/model_{rep_ix}_alt__{variant}.npy')[0][0]
+            ref_pred = np.load(os.path.join(PRED_DIR, f'model_{rep_ix}_ref__{variant}.npy'))[0][0]
+            alt_pred = np.load(os.path.join(PRED_DIR, f'model_{rep_ix}_alt__{variant}.npy'))[0][0]
             
             ref_pred = ref_pred.reshape(-1, 89).astype(np.float32).T  # shape: (89, bins)
             alt_pred = alt_pred.reshape(-1, 89).astype(np.float32).T
@@ -801,8 +815,8 @@ for seq_id in range(len(df)):
 
         ref_list, alt_list = [], []
         for rep_ix in range(1, NUM_REPLICATES + 1):
-            ref_pred = np.load(f'../data/borzoi_predictions/model_{rep_ix}_ref__{variant}.npy')[0][0]
-            alt_pred = np.load(f'../data/borzoi_predictions/model_{rep_ix}_alt__{variant}.npy')[0][0]
+            ref_pred = np.load(os.path.join(PRED_DIR, f'model_{rep_ix}_ref__{variant}.npy'))[0][0]
+            alt_pred = np.load(os.path.join(PRED_DIR, f'model_{rep_ix}_alt__{variant}.npy'))[0][0]
             
             ref_pred = ref_pred.reshape(-1, 89).astype(np.float32).T  # shape: (89, bins)
             alt_pred = alt_pred.reshape(-1, 89).astype(np.float32).T
@@ -950,8 +964,8 @@ for seq_id in range(len(df)):
         sum_feats = []
 
         for rep_ix in range(1, 5):  # Models 1 to 4
-            log_path = f"../data/borzoi_predictions/model_{rep_ix}_log_score__{variant}.npy"
-            sum_path = f"../data/borzoi_predictions/model_{rep_ix}_sum_score_{variant}.npy"
+            log_path = os.path.join(PRED_DIR, f"model_{rep_ix}_log_score__{variant}.npy")
+            sum_path = os.path.join(PRED_DIR, f"model_{rep_ix}_sum_score_{variant}.npy")
 
             log_feat = np.load(log_path)  # shape: (7611,)
             sum_feat = np.load(sum_path)  # shape: (7611,)
@@ -1022,7 +1036,7 @@ for seq_id in range(len(df)):
         gene_list = []
 
         for rep_ix in range(1, NUM_REPLICATES + 1):
-            arr = np.load(f'../data/borzoi_gene_predictions/model_{rep_ix}_{gene_id}.npy')[0][0]
+            arr = np.load(os.path.join(GENEPRED_DIR, f'model_{rep_ix}_{gene_id}.npy'))[0][0]
             arr = arr.reshape(-1, 89).astype(np.float32).T  # (89, bins)
             arr[~np.isfinite(arr)] = np.nan                 # sanitize non-finite
             gene_list.append(arr)

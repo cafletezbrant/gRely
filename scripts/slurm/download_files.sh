@@ -7,14 +7,14 @@
 #SBATCH --ntasks=1                         # Request 8 cores
 #SBATCH --mem=16G                          # Memory total in MB
 #SBATCH --time=0-1:00                     # Runtime in D-HH:MM
-#SBATCH --output=/home/rafia1/scratch/outputs/dl%A_%a.out
-#SBATCH --error=/home/rafia1/scratch/errors/dl%A_%a.err
+#SBATCH --output=logs/dl%A_%a.out
+#SBATCH --error=logs/dl%A_%a.err
 
 
 set -euo pipefail
 
 BASE="https://epigenome.wustl.edu/epimap/data/averagetracks_pergroup/"
-OUTDIR="/home/rafia1/scratch/data/bigwig_tracks"
+OUTDIR="data/bigwig_tracks"
 mkdir -p "$OUTDIR" logs
 
 # Files to download (indices 0..17)

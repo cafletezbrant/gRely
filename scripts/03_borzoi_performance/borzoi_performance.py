@@ -4,7 +4,11 @@ import pyfaidx
 from baskerville import seqnn
 import pysam
 import sys
-sys.path.append('/home/rafia1/scratch/borzoi/examples')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from grely.paths import load_paths
+P = load_paths()
+sys.path.append(P['roots']['borzoi_examples'])
 from borzoi_helpers import *
 import numpy as np
 import os
@@ -22,24 +26,26 @@ from scipy.stats import pearsonr
 
 
 # read in the sequences
-df=pd.read_csv('/home/rafia1/scratch/data/all_sequences.csv', sep='\t')
+perf_dir = P['outputs']['borzoi_performance']
+os.makedirs(perf_dir, exist_ok=True)
+df=pd.read_csv(P['tables']['all_sequences'], sep='\t')
 job_id = int(sys.argv[1])
 df=df.iloc[job_id*100:job_id*100+100].reset_index(drop=True)
 
-params_file = '/home/rafia1/scratch/borzoi/examples/params_pred.json'
+params_file = P['borzoi']['params_pred']
 with open(params_file) as params_open :
     params = json.load(params_open)
     params_model = params['model']
 
-targets_file = '/home/rafia1/scratch/borzoi/examples/targets_human.txt'
+targets_file = P['borzoi']['targets_human']
 targets_df = pd.read_csv(targets_file, index_col=0, sep='\t')
 target_index = targets_df.index
 
-fasta_path = '/home/rafia1/scratch/data/hg38.fa'
+fasta_path = P['reference']['fasta']
 pyfaidx.Faidx(fasta_path)
 fasta_open = pysam.Fastafile(fasta_path)
 
-file_path = '/gstore/data/resbioai/grelu/borzoi-data/hg38/sequences.bed'
+file_path = P['reference']['borzoi_sequences_bed']
 seq_mappingF = pd.read_csv(file_path, sep='\t', header=None, names=['chrom', 'start', 'end', 'fold'])
 seq_mappingF['tf_label'] = seq_mappingF.groupby('fold').cumcount() // 16
 seq_mappingF['tfrecord'] = seq_mappingF.apply(lambda row: f"{row['fold']}-{row['tf_label']}.tfr", axis=1)
@@ -49,7 +55,7 @@ seq_len = 524288
 
 models = {}
 for rep_ix in range(1, 5):
-    model_file = "/home/rafia1/scratch/data/model_weights/model0_best_" + str(rep_ix) + ".h5"
+    model_file = P['borzoi']['model_weights'].format(rep=rep_ix)
     seqnn_model = seqnn.SeqNN(params_model)
     seqnn_model.restore(model_file, 0)
     seqnn_model.build_slice(target_index)
@@ -90,7 +96,7 @@ for seq_id in range(len(df)):
         "sequence": tf.io.FixedLenFeature([], tf.string),
     }
 
-    dataset = tf.data.TFRecordDataset(f"/gstore/data/resbioai/grelu/borzoi-data/hg38/tfrecords/{selected_record.tfrecord}", compression_type="ZLIB")
+    dataset = tf.data.TFRecordDataset(f"{P['reference']['borzoi_tfrecords']}/{selected_record.tfrecord}", compression_type="ZLIB")
     i = selected_record.example_number
 
     counter = 0
@@ -119,8 +125,8 @@ for seq_id in range(len(df)):
     sequence_one_hot_wt = process_sequence(fasta_open, chrom, start, end)
 
     for rep_ix, model in models.items():
-        path1 = f'/home/rafia1/scratch/data/borzoi_performance/model_{rep_ix}_{variant}_along_sequence.npy'
-        path2 = f'/home/rafia1/scratch/data/borzoi_performance/model_{rep_ix}_{variant}_along_track.npy'
+        path1 = os.path.join(perf_dir, f'model_{rep_ix}_{variant}_along_sequence.npy')
+        path2 = os.path.join(perf_dir, f'model_{rep_ix}_{variant}_along_track.npy')
 
         if os.path.exists(path1) and os.path.exists(path2):
             try:
@@ -147,5 +153,5 @@ for seq_id in range(len(df)):
             pearsons.append(pearsonr(y_wt_centered[i,:], target.T[i,:])[0])
         pearsons_track = np.array(pearsons)
 
-        np.save(f'/home/rafia1/scratch/data/borzoi_performance/model_{rep_ix}_{variant}_along_sequence.npy', pearsons_seq)
-        np.save(f'/home/rafia1/scratch/data/borzoi_performance/model_{rep_ix}_{variant}_along_track.npy', pearsons_track)
+        np.save(os.path.join(perf_dir, f'model_{rep_ix}_{variant}_along_sequence.npy'), pearsons_seq)
+        np.save(os.path.join(perf_dir, f'model_{rep_ix}_{variant}_along_track.npy'), pearsons_track)

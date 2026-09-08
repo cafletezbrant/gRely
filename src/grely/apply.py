@@ -32,6 +32,40 @@ def score(model, df: pd.DataFrame, features: list[str]) -> np.ndarray:
     return model.predict_proba(df[features])[:, 1]
 
 
+def predict_out_of_fold(
+    df: pd.DataFrame,
+    features: list[str],
+    model_dir: str = "models",
+    prob_col: str = "grely_prob",
+    config: dict | None = None,
+) -> pd.DataFrame:
+    """Pool held-out predictions, each scored by the model that held it out.
+
+    Returns only the test tuples (chr1-3 ∩ each fold's held-out tissues) with an
+    added ``prob_col`` and ``fold`` column — the pooled cross-validated set used
+    to evaluate gRely (paper Fig 1 / Table 1).
+    """
+    cfg = config or load_config()
+    folds = get_folds(cfg)
+    train_chroms, test_chroms = get_chroms(cfg)
+
+    parts = []
+    for fold_name, test_tissues in folds:
+        train_tissues = union(*[s for (n, s) in folds if n != fold_name])
+        _, test_mask = split_masks(df, test_tissues, train_tissues, train_chroms, test_chroms)
+        if not test_mask.any():
+            continue
+        model_path = os.path.join(model_dir, f"xgb_model_center_196kb_{fold_name}_chromosomal.json")
+        model = load_model(model_path)
+        d = df.loc[test_mask].copy()
+        d[prob_col] = model.predict_proba(d[features])[:, 1]
+        d["fold"] = fold_name
+        parts.append(d)
+    if not parts:
+        raise RuntimeError("No test tuples found for any fold — check the matrix and config.")
+    return pd.concat(parts)
+
+
 def score_by_fold(
     df: pd.DataFrame,
     features: list[str],
@@ -69,7 +103,7 @@ def transfer_eval(
     top_pct: float = 80.0,
     bottom_pct: float = 20.0,
 ) -> dict:
-    """Cross-model transfer evaluation (verbatim logic from the Enformer analysis).
+    """Cross-model transfer evaluation.
 
     Compares overall sign concordance against the top / bottom quantiles ranked
     by the gRely reliability score.

@@ -8,9 +8,9 @@
 #SBATCH --gres=gpu:a100:1                          # gpu
 #SBATCH --time=0-12:00                     # Runtime in D-HH:MM
 #SBATCH --qos=1d                           # QoS policy
-#SBATCH --output=/home/rafia1/scratch/outputs/pred_%A_%a.out
-#SBATCH --error=/home/rafia1/scratch/errors/pred_%A_%a.err
+#SBATCH --output=logs/pred_%A_%a.out
+#SBATCH --error=logs/pred_%A_%a.err
 
 ml load Miniforge3
 conda activate borzoi
-python /home/rafia1/scratch/codes/borzoi_predictions_difference_only_per_track.py $SLURM_ARRAY_TASK_ID
+python scripts/02_borzoi_predictions/borzoi_predictions_difference_only_per_track.py $SLURM_ARRAY_TASK_ID

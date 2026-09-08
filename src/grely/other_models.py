@@ -8,8 +8,7 @@ the matching output track, and take the log-ratio (logSUM) between alt and ref.
 These helpers map a gene's exons to the model's output-bin indices for a window
 centered on the variant. ``load_exons_from_gtf`` / ``_merge_intervals`` are
 shared; ``get_gene_slice_ag`` (AlphaGenome) and ``get_gene_slice_enformer``
-(Enformer) differ only in the model geometry. All function bodies are copied
-verbatim from the original ``alphagenome.py`` and the Enformer notebook.
+(Enformer) differ only in the model geometry.
 """
 
 from __future__ import annotations

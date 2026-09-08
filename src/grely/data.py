@@ -1,13 +1,9 @@
 """Feature-matrix preparation and cross-validation splits for gRely.
 
-This is a faithful extraction of the data-preparation logic that lived in the
-original training/evaluation notebooks (feature selection, the center-window
-filter, the label definition, and the joint tissue+chromosome fold masks). The
-numbers it produces are unchanged from the notebook; only the packaging is new.
-
-The single source of truth for the fold/tissue/feature definitions is
-``configs/grely.yaml`` — this module reads it so the config and code cannot
-drift apart.
+Handles feature selection, the center-window filter, the sign-concordance
+label, and the joint tissue+chromosome fold masks used to train and evaluate
+gRely. The fold, tissue, and feature definitions come from
+``configs/grely.yaml`` so the config is the single source of truth.
 """
 
 from __future__ import annotations
@@ -36,20 +32,20 @@ def load_config(config_path: str | os.PathLike | None = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Feature / label selection  (verbatim logic from the original notebooks)
+# Feature / label selection
 # ---------------------------------------------------------------------------
 
 def select_features(df: pd.DataFrame, config: dict | None = None) -> list[str]:
     """Return the ordered gRely feature columns.
 
-    Mirrors the notebook exactly::
+    Selection rule::
 
         features = list(df.columns[first_col:]) + [magnitude_feature]
         features = [f for f in features if f not in leakage_columns]
 
     The first ``first_col`` columns are identifier/label/metadata columns; the
-    ``leakage_columns`` (eQTL-summary-statistic-derived) are dropped to prevent
-    label leakage, per the paper's Methods.
+    ``leakage_columns`` (derived from eQTL summary statistics) are dropped to
+    prevent label leakage.
     """
     cfg = (config or load_config()).get("features", {})
     first_col = int(cfg.get("first_feature_col_index", 40))
@@ -107,7 +103,7 @@ def union(*lists) -> set:
 
 
 def split_masks(df, test_tissues, train_tissues, train_chroms, test_chroms):
-    """Joint tissue+chromosome train/test masks (verbatim from the notebook)."""
+    """Joint tissue+chromosome train/test masks."""
     train_mask = df["chrom"].isin(train_chroms) & df["target_tissue"].isin(train_tissues)
     test_mask = df["chrom"].isin(test_chroms) & df["target_tissue"].isin(test_tissues)
     return train_mask, test_mask
