@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grely"
+version = "0.1.0"
+description = "gRely: reliability scoring for genome-trained sequence-to-function model predictions"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Abdul Muntakim Rafi" },
+    { name = "Gokcen Eraslan" },
+    { name = "Kipper Fletez-Brant" },
+]
+# NB: versions are intentionally left unpinned here. The pipeline ran in a
+# cluster conda env (`borzoi` / `dream`) that could not be introspected during
+# restructuring. Pin exact versions from your live environment before release
+# (see environment.yml and MIGRATION.md → "Environment").
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "pyarrow",       # parquet IO
+    "pyyaml",        # configs/*.yaml
+    "xgboost",       # the gRely meta-model (train + apply)
+    "tqdm",
+    # --- feature extraction (stages 01-04) ---
+    "biopython",     # Bio.SeqUtils.gc_fraction (variant_features.py)
+    "pyfaidx",
+    "pysam",
+    "pyBigWig",      # EpiMap bigWig + phyloP reads
+    "pyranges",      # blacklist overlap (find_pos/find_neg)
+    "bioframe",      # TFRecord interval overlap
+    "h5py",
+]
+
+[project.optional-dependencies]
+# Heavy / environment-specific deps for the Borzoi prediction + featurization
+# stages. Borzoi itself (baskerville, borzoi_helpers) is installed separately
+# from https://github.com/calico/borzoi — see README.
+borzoi = [
+    "tensorflow",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

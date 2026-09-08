@@ -1,0 +1,43 @@
+# --- Data & large reference files (never commit; see data/README.md) --------
+data/*
+!data/README.md
+!data/.gitkeep
+
+# Model weights, genomes, tracks, TFRecords
+*.h5
+*.fa
+*.fai
+*.bw
+*.bigWig
+*.bed.gz
+*.tfr
+*.gtf
+
+# --- Pipeline intermediates -------------------------------------------------
+*.npy
+*.pkl
+*.parquet
+*.tsv.gz
+_schema.json
+*.nan_report.json
+
+# --- Trained gRely models + held-out probabilities (regenerated) ------------
+models/
+yprob/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+.venv/
+env/
+.env
+
+# --- OS / editor ------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/

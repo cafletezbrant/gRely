@@ -1,0 +1,102 @@
+# ---------------------------------------------------------------------------
+# gRely path configuration
+#
+# Every value below is copied VERBATIM from the original pipeline scripts, so
+# the defaults reproduce the exact behavior of the code as it was run for the
+# paper. Edit the `roots` block to point at your own machine; the per-file
+# entries are expressed relative to those roots.
+#
+# In the original runs the scripts were launched (via SLURM) from
+# `$SCRATCH/codes`, which made the relative path `../data` resolve to
+# `$SCRATCH/data`. So `../data/<x>` and `/home/rafia1/scratch/data/<x>` refer
+# to the SAME location. Both are represented here under `roots.data`.
+#
+# This file is consumed by `grely.paths.load_paths()` (additive helper). The
+# stage scripts themselves have been left byte-identical to the originals and
+# do NOT yet read this file — see MIGRATION.md.
+# ---------------------------------------------------------------------------
+
+roots:
+  # Primary working data directory. Original: /home/rafia1/scratch/data
+  # (equivalently ../data when a script is run from $SCRATCH/codes).
+  data: /home/rafia1/scratch/data
+
+  # Compute-cluster scratch root. Original: /home/rafia1/scratch
+  scratch: /home/rafia1/scratch
+
+  # Borzoi repo checkout that ships borzoi_helpers / params_pred.json / targets.
+  # Original: /home/rafia1/scratch/borzoi/examples
+  borzoi_examples: /home/rafia1/scratch/borzoi/examples
+
+  # READ-ONLY reference store: eQTL Catalogue SuSiE credible sets + sumstats.
+  # Original: /gstore/data/humgenet/ref/eqtl_catalogue
+  eqtl_catalogue: /gstore/data/humgenet/ref/eqtl_catalogue
+
+  # READ-ONLY reference store: Borzoi training data (sequences.bed + TFRecords).
+  # Original: /gstore/data/resbioai/grelu/borzoi-data/hg38
+  borzoi_data: /gstore/data/resbioai/grelu/borzoi-data/hg38
+
+# --- Reference genome / annotations -----------------------------------------
+reference:
+  fasta:                 "{data}/hg38.fa"
+  blacklist:             "{data}/hg38-blacklist.v2.bed"          # hg38 blacklist v2
+  phylop_bw:             "{data}/hg38.phyloP100way.bw"
+  gencode_gtf:           "{data}/gencode41_basic_nort.gtf"       # GENCODE v41
+  sequences_bed_gz:      "{data}/sequences_human.bed.gz"         # Borzoi fold assignment
+  borzoi_sequences_bed:  "{borzoi_data}/sequences.bed"
+  borzoi_tfrecords:      "{borzoi_data}/tfrecords"               # {fold}-{tf}.tfr (ZLIB)
+
+# --- Borzoi model + track definitions ---------------------------------------
+borzoi:
+  params_pred:      "{borzoi_examples}/params_pred.json"
+  model_weights:    "{data}/model_weights/model0_best_{rep}.h5"  # rep in 1..4
+  targets_gtex:     "{borzoi_examples}/targets_gtex.txt"         # 89 GTEx tracks
+  targets_human:    "{borzoi_examples}/targets_human.txt"        # 7611 tracks
+  targets_human_gz: "{data}/targets_human.txt.gz"
+
+# --- eQTL Catalogue (read-only reference store) ------------------------------
+eqtl:
+  susie_dir:    "{eqtl_catalogue}/susie"                                            # {study_id}/{dataset_id}/{dataset_id}.credible_sets.tsv.gz
+  sumstats_tpl: "{eqtl_catalogue}/sumstats/{study_id}/{dataset_id}/{dataset_id}.all.tsv.gz"
+
+# --- Curated label / index tables (produced by upstream curation) -----------
+tables:
+  borzoi_gtex_common:      "{data}/borzoi_gtex_common.csv"        # study/dataset index for find_pos/find_neg
+  all_curated:             "{data}/all_curated.csv"               # merged pos+neg tuples (input to compile)
+  all_sequences:           "{data}/all_sequences.csv"             # variant list for predictions/features
+  all_genes:               "{data}/all_genes.csv"                 # gene list (chrom/center/union_start/union_end)
+  borzoi_tracks_matched:   "{data}/borzoi_tracks_matched_gtex.csv"
+  gene_to_tss:             "{data}/gene_to_tss.csv"
+  # Master matrix: all final_feature_set/*.parquet concatenated with labels.
+  # Consumed by training (stage 05) and cross-model apply (stage 06).
+  feature_matrix:          "{data}/task_sign_matching_with_features.parquet"
+
+# --- EpiMap "Other" average chromatin tracks (variant/gene sequence feats) ---
+# NB: variant_features.py reads the *observed* tracks; download_files.sh fetches
+# the *imputed* tracks. Both naming conventions are preserved (see MIGRATION.md).
+bigwig_dir: "{data}/bigwig_tracks"
+
+# --- Intermediate outputs (produced by the pipeline) ------------------------
+outputs:
+  pos_eqtls:                "{data}/pos_eqtls"                    # {dataset_id}_pos_eqtls.tsv.gz
+  neg_eqtls:                "{data}/neg_eqtls"                    # {dataset_id}_neg_eqtls.tsv.gz
+  borzoi_predictions:       "{data}/borzoi_predictions"          # ref/alt/sum_score/log_score .npy
+  borzoi_gene_predictions:  "{data}/borzoi_gene_predictions"     # model_{rep}_{gene}.npy
+  borzoi_performance:       "{data}/borzoi_performance"          # per-variant along_sequence/along_track .npy
+  borzoi_gene_performance:  "{data}/borzoi_gene_performance"     # per-gene along_sequence/along_track .npy
+  sequence_features:        "{data}/sequence_features"           # variant_features.py output ({variant}.pkl)
+  sequence_features_new:    "{data}/sequence_features_new"        # {variant}.parquet (read by compile)
+  gene_sequence_features:   "{data}/gene_sequence_features_new"   # {gene}.parquet (read by compile)
+  gene_data_features:       "{data}/gene_data_features_new"       # {gene}.pkl (gene_data_features.py)
+  final_feature_set:        "{data}/final_feature_set_latest"     # {variant}_{gene}_{tissue}.parquet (compile)
+
+# --- Trained gRely models + cross-model transfer (stages 05 / 06) -----------
+models:
+  models_dir:   "models"                                          # xgb_model_center_196kb_{fold}_chromosomal.json
+  yprob_dir:    "yprob"                                           # yprob_{fold}.npy (held-out probabilities)
+
+other_models:
+  alphagenome_predictions: "{data}/alphagenome_predictions"       # {i}_ref.npy / {i}_alt.npy (768 tracks)
+  enformer_predictions:    "{data}/predictions"                   # {i}_ref.npy / {i}_alt.npy (896 x 5313)
+  alphagenome_pred_csv:    "{data}/alphagenome_pred.csv"          # alphagenome_vep.py output
+  enformer_pred_csv:       "{data}/enformer_pred.csv"             # enformer_vep.py output

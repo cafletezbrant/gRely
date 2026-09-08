@@ -1,0 +1,32 @@
+# gRely Python dependencies (tool: feature extraction + train + apply).
+#
+# Versions are UNPINNED on purpose: the paper pipeline ran in a cluster conda
+# env that was not available during restructuring. Before release, regenerate a
+# pinned file from the real environment, e.g.:
+#     pip freeze > requirements.lock.txt      # or
+#     conda env export --no-builds > environment.lock.yml
+#
+# Core numerics / IO
+numpy
+pandas
+scipy
+pyarrow            # parquet IO (feature matrix, compile_final_feature_set.py)
+pyyaml             # configs/*.yaml
+tqdm
+
+# Meta-model (train + apply)
+xgboost            # gRely (scripts/05_train_grely, scripts/06_apply_other_models)
+
+# Feature extraction (stages 01-04)
+biopython          # Bio.SeqUtils.gc_fraction (variant_features.py)
+pyfaidx
+pysam
+pyBigWig           # EpiMap bigWig + phyloP track reads
+pyranges           # blacklist overlap (find_pos/find_neg)
+bioframe           # TFRecord interval overlap (borzoi_performance*, gene_data_features)
+h5py
+
+# --- Borzoi prediction stage (GPU) ------------------------------------------
+# tensorflow                # required by baskerville.seqnn / borzoi_helpers
+# baskerville               # install from the Borzoi repo (calico/borzoi)
+# borzoi_helpers            # ships with the Borzoi repo (examples/)

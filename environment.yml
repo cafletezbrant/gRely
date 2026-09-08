@@ -1,0 +1,34 @@
+# Conda environment for gRely (feature extraction + train + apply).
+#
+# The Borzoi prediction stage additionally requires TensorFlow + the Borzoi
+# package (baskerville / borzoi_helpers) from https://github.com/calico/borzoi
+# in its own GPU env (the original runs used a conda env named `borzoi` for GPU
+# work and `dream` for eQTL curation).
+#
+# Versions are UNPINNED (see requirements.txt for the rationale). Pin from the
+# live environment before release.
+name: grely
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.9
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - pyarrow
+  - pyyaml
+  - h5py
+  - tqdm
+  - pysam
+  - pybigwig
+  - pyfaidx
+  - pyranges
+  - bioframe
+  - biopython
+  - pip:
+      - xgboost
+      # - tensorflow          # enable for the Borzoi prediction stage
+      # editable install of this repo's package:
+      - -e .

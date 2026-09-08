@@ -1,0 +1,160 @@
+# ---------------------------------------------------------------------------
+# gRely meta-model configuration.
+#
+# Values are copied VERBATIM from the source so they document (not redefine)
+# what was run for the paper:
+#   - XGBoost hyperparameters -> notebooks/figure_1.ipynb (training cell)
+#   - fold / tissue-set definitions -> scripts/05_other_models/alphagenome.py
+#     and notebooks/figure_1.ipynb (they are identical), Table 2 of the paper
+#   - tissue -> Borzoi RNA-track index map -> scripts/05_other_models/alphagenome.py
+#
+# These are RESULTS, not style. Do not change them; changing a seed, threshold,
+# or hyperparameter changes the paper's numbers.
+# ---------------------------------------------------------------------------
+
+meta_model:
+  algorithm: xgboost.XGBClassifier
+  n_estimators: 300
+  max_depth: 5
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  eval_metric: logloss
+  use_label_encoder: false
+  random_state: 42
+  # scale_pos_weight is set per-fold at train time to (n_neg / n_pos).
+  scale_pos_weight: auto
+
+features:
+  # Feature-matrix column selection (verbatim from the training notebook):
+  #   features = list(df.columns[first_feature_col_index:]) + [magnitude_feature]
+  #   features = [f for f in features if f not in leakage_columns]
+  # The first columns are identifier/label/metadata; the leakage columns are
+  # derived from eQTL summary statistics and are dropped to prevent label leakage.
+  first_feature_col_index: 40
+  magnitude_feature: avg_logSum
+  label_column: logSum_sign_correct
+  leakage_columns:
+    - fine_map_pip
+    - credible_set_size
+    - credible_set_min_r2
+    - eqtl_study_sample_size
+    - eqtl_pvalue
+    - eqtl_se
+    - minor_allele_freq
+    - alt_allele_count
+    - total_called_alleles
+    - minor_allele_sample_count
+
+label:
+  # 1 if sign(Borzoi VEP) == sign(fine-mapped eQTL beta), else 0.
+  task: sign_concordance
+  positive_pip_threshold: 0.9     # SuSiE PIP > 0.9 for positive eQTLs
+  maf_threshold: 0.01             # minor allele frequency > 0.01
+  snv_only: true
+  blacklist: hg38-blacklist.v2
+
+cross_validation:
+  # Joint tissue + chromosome hold-out. Each fold holds out one tissue set AND
+  # chromosomes 1-3; trains on the other four sets and chromosomes 4-X.
+  test_chroms:  [chr1, chr2, chr3]
+  train_chroms: [chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13,
+                 chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22, chrX]
+  # Restrict to variants whose target gene falls in the central window:
+  #   variant_to_tss_distance < 196608 // 2  (== 98304 bp)
+  center_window_bp: 98304
+
+# 37 GTEx tissues partitioned into 5 disjoint sets (paper Table 2).
+tissue_sets:
+  set1:   # Neural and endocrine
+    - brain_amygdala
+    - brain_cerebellar_hemisphere
+    - brain_cortex
+    - nerve_tibial
+    - pituitary
+    - adrenal_gland
+    - thyroid
+  set2:   # Cardiovascular, muscle, lung, kidney
+    - artery_aorta
+    - artery_tibial
+    - heart_atrial_appendage
+    - heart_left_ventricle
+    - muscle
+    - lung
+    - kidney_cortex
+  set3:   # Digestive
+    - esophagus_gej
+    - esophagus_mucosa
+    - stomach
+    - small_intestine
+    - colon_sigmoid
+    - colon_transverse
+    - liver
+    - pancreas
+  set4:   # Reproductive and glandular
+    - ovary
+    - testis
+    - uterus
+    - vagina
+    - prostate
+    - breast
+    - minor_salivary_gland
+  set5:   # Blood, immune, skin, adipose
+    - blood
+    - LCL
+    - spleen
+    - skin_not_sun_exposed
+    - skin_sun_exposed
+    - fibroblast
+    - adipose_subcutaneous
+    - adipose_visceral
+
+# Tissue -> AlphaGenome RNA-seq output-track index (from alphagenome.py).
+# Used only in the AlphaGenome cross-model transfer evaluation.
+tissue_to_rna_idx:
+  blood: 661
+  LCL: 567
+  spleen: 625
+  skin_not_sun_exposed: 666
+  skin_sun_exposed: 643
+  fibroblast: 570
+  adipose_subcutaneous: 632
+  adipose_visceral: 658
+  brain_amygdala: 618
+  brain_cerebellar_hemisphere: 634
+  brain_cortex: 615
+  nerve_tibial: 609
+  pituitary: 588
+  adrenal_gland: 637
+  thyroid: 624
+  artery_aorta: 611
+  artery_tibial: 653
+  heart_atrial_appendage: 651
+  heart_left_ventricle: 650
+  muscle: 659
+  lung: 655
+  kidney_cortex: 606
+  esophagus_gej: 645
+  esophagus_mucosa: 652
+  stomach: 593
+  small_intestine: 604
+  colon_sigmoid: 603
+  colon_transverse: 602
+  liver: 600
+  pancreas: 601
+  ovary: 596
+  testis: 591
+  uterus: 598
+  vagina: 599
+  prostate: 636
+  breast: 654
+  minor_salivary_gland: 648
+
+base_model:
+  name: Borzoi
+  input_bp: 524288
+  train_crop_bins: 6144          # central 196,608 bp (6,144 x 32 bp bins)
+  output_resolution_bp: 32
+  total_tracks: 7611
+  gtex_tracks: 89
+  replicates: 4                  # model0_best_{1..4}.h5
