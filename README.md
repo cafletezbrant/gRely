@@ -199,3 +199,15 @@ All inputs are public (paper, Data availability):
 See [`data/README.md`](data/README.md) for the expected on-disk layout.
 
 ---
+
+## Citation
+
+If you use gRely, please cite:
+
+> Rafi AM, Eraslan G, Fletez-Brant K. *gRely: Relyability for genome trained
+> sequence-to-function model predictions.* bioRxiv (2026).
+> doi:[10.64898/2026.05.23.727431](https://www.biorxiv.org/content/10.64898/2026.05.23.727431v1)
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

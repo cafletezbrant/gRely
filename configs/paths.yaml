@@ -73,7 +73,6 @@ outputs:
   borzoi_gene_predictions:  "{data}/borzoi_gene_predictions"     # model_{rep}_{gene}.npy
   borzoi_performance:       "{data}/borzoi_performance"          # per-variant along_sequence/along_track .npy
   borzoi_gene_performance:  "{data}/borzoi_gene_performance"     # per-gene along_sequence/along_track .npy
-  sequence_features:        "{data}/sequence_features"           # legacy pkl location (unused)
   sequence_features_new:    "{data}/sequence_features_new"        # {variant}.parquet (variant_features.py -> compile)
   gene_sequence_features:   "{data}/gene_sequence_features_new"   # {gene}.parquet (gene_sequence_features.py -> compile)
   gene_data_features:       "{data}/gene_data_features_new"       # {gene}.pkl (gene_data_features.py)

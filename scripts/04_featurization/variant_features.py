@@ -4,7 +4,6 @@ import numpy as np
 from Bio.SeqUtils import gc_fraction
 from collections import defaultdict, Counter
 from tqdm import tqdm
-import pickle
 import pandas as pd
 import sys
 import os
